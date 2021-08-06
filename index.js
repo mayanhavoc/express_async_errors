@@ -36,45 +36,62 @@ app.get('/products', async (req, res) => {
 })
 
 app.get('/products/new', (req, res) => {
-    throw new AppError('Not allowed', 401)
+    // throw new AppError('Not allowed', 401)
     res.render('products/new', { categories })
 })
 
-app.post('/products',  async (req, res) => {
+app.post('/products',  wrapAsync(async (req, res, next ) => {
     const newProduct = new Product(req.body);
     await newProduct.save();
-    res.redirect(`products/${newProduct._id}`)
-})
+    if (!newProduct) {
+        return next(new AppError('Product not found', 404));
+    }
+    res.redirect(`/products/${newProduct._id}`)
+}))
 
-app.get('/products/:id', async (req, res, next) => {
+function wrapAsync(fn) {
+    return function(req, res, next){
+        fn(req, res, next).catch(e => next(e))
+    }
+}
+
+app.get('/products/:id', wrapAsync(async(req, res, next) => {
     const { id } = req.params;
     const product = await Product.findById(id);
     if (!product) {
         return next(new AppError('Product not found', 404));
     }
     res.render('products/details', { product });
-})
+}))
 
-app.get('/products/:id/edit', async (req, res, next) => {
+
+app.get('/products/:id/edit', wrapAsync(async (req, res, next) => {
     const { id } = req.params;
     const product = await Product.findById(id);
     if (!product) {
         return next(new AppError('Product not found', 404));
     }
     res.render('products/edit', { product, categories })
-})
+}));
 
-app.put('/products/:id', async (req, res) => {
+
+app.put('/products/:id', wrapAsync(async (req, res, next) => {
     const { id } = req.params;
     const product = await Product.findByIdAndUpdate(id, req.body, { runValidators: true, useFindAndModify: false, new: true })
+    if (!product) {
+        return next(new AppError('Product not found', 404));
+    }
     res.redirect(`/products/${product._id}`)
-})
+}))
 
-app.delete('/products/:id', async (req, res) => {
+app.delete('/products/:id', wrapAsync(async (req, res, next) => {
     const { id } = req.params;
     const deletedProduct = await Product.findByIdAndDelete(id);
-    res.redirect('/products');
-})
+    if (!deletedProduct) {
+        return next(new AppError('Product not found', 404));
+    }
+    res.redirect('/products');  
+}))
 
 app.use((err, req, res, next) => {
     const { status=500, message="Something went wrong" } = err;
