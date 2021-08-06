@@ -11,3 +11,9 @@ app.get('/', function (req, res, next){
     })
 })
 ```
+## Mongoose errors
+
+Validation errors
+
+Cast-object errors
+

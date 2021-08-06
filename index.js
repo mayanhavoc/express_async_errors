@@ -24,6 +24,12 @@ app.use(methodOverride('_method'));
 
 const categories = ['fruit', 'vegetables', 'dairy'];
 
+function wrapAsync(fn) {
+    return function(req, res, next){
+        fn(req, res, next).catch(e => next(e))
+    }
+}
+
 app.get('/products', async (req, res) => {
     const { category } = req.query;
     if(category) {
@@ -49,11 +55,6 @@ app.post('/products',  wrapAsync(async (req, res, next ) => {
     res.redirect(`/products/${newProduct._id}`)
 }))
 
-function wrapAsync(fn) {
-    return function(req, res, next){
-        fn(req, res, next).catch(e => next(e))
-    }
-}
 
 app.get('/products/:id', wrapAsync(async(req, res, next) => {
     const { id } = req.params;
@@ -92,6 +93,18 @@ app.delete('/products/:id', wrapAsync(async (req, res, next) => {
     }
     res.redirect('/products');  
 }))
+
+const handleValidationErr = err => {
+    console.dir(err);
+    return (new AppError(`Validation failed... ${err.message}`, 400));
+}
+
+
+app.use((err, res, req, next) => {
+    console.log(err.name)
+    if (err.name === 'ValidationError') err = handleValidationErr(err)
+    next(err);
+})
 
 app.use((err, req, res, next) => {
     const { status=500, message="Something went wrong" } = err;
