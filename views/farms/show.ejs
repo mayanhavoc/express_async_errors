@@ -12,6 +12,22 @@
         <li>City: <%= farm.city %></li>
         <li>Email: <%= farm.email %> </li>
     </ul>
-    <a href="/farms">Back</a>
+    <h2>Products</h2>
+    <ul>
+        <% for (let product of farm.products) { %>
+            <li><a href="/products/<%= product._id%>"><%= product.name %> </a></li>
+            <% } %> 
+    </ul>
+    <div>
+        <a href="/farms/<%=farm._id%>/products/new">Add a product</a>
+    </div>
+    <div>
+        <a href="/farms">Back</a>
+    </div>
+    <div>
+        <form action="/farms/<%= farm._id %>?_method=DELETE" method="POST">
+            <button>Delete</button>
+        </form>
+    </div>
 </body>
 </html>

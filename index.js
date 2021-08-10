@@ -3,10 +3,11 @@ const app = express();
 const path = require('path');
 const mongoose = require('mongoose');
 const methodOverride = require('method-override')
-const AppError = require('./AppError');
+
 
 const Product = require('./models/product');
 const Farm = require('./models/farm'); 
+const categories = ['fruit', 'vegetables', 'dairy'];
 
 mongoose.connect('mongodb://localhost:27017/farmStandTake2', { useNewUrlParser: true, useUnifiedTopology:true})
 .then(() => {
@@ -23,6 +24,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
 
 
+function wrapAsync(fn) {
+    return function(req, res, next){
+        fn(req, res, next).catch(e => next(e))
+    }
+}
+
 // FARM ROUTES
 
 app.get('/farms', async (req, res)=> {
@@ -32,10 +39,10 @@ app.get('/farms', async (req, res)=> {
 
 app.get('/farms/new', (req, res) => {
     res.render('farms/new')
-})
+});
 
 app.get('/farms/:id', async (req, res) => {
-    const farm = await Farm.findById(req.params.id);
+    const farm = await Farm.findById(req.params.id).populate('products');
     res.render('farms/show', { farm });
 })
 
@@ -45,20 +52,31 @@ app.post('/farms', async (req, res) => {
     res.redirect('/farms');
 })
 
+app.get('/farms/:id/products/new', async (req, res) => {
+    const { id } = req.params; 
+    const farm = await Farm.findById(id);
+    res.render('products/new', { farm, categories })
+})
 
+app.post('/farms/:id/products', wrapAsync(async (req, res) => {
+    const { id } = req.params;
+    const farm = await Farm.findById(id);
+    const {name, price, category } = req.body;
+    const product = new Product({name, price, category});
+    farm.products.push(product);
+    product.farm = farm;
+    await farm.save();
+    await product.save();
+    res.redirect(`/farms/${id}`);
+}))
 
+app.delete('/farms/:id', async (req, res) => {
+    const farm = await Farm.findByIdAndDelete(req.params.id);
+    res.redirect('/farms');
+})
 
 
 // PRODUCT ROUTES
-
-
-const categories = ['fruit', 'vegetables', 'dairy'];
-
-function wrapAsync(fn) {
-    return function(req, res, next){
-        fn(req, res, next).catch(e => next(e))
-    }
-}
 
 app.get('/products', async (req, res) => {
     const { category } = req.query;
@@ -71,27 +89,20 @@ app.get('/products', async (req, res) => {
     }
 })
 
-app.get('/products/new', (req, res) => {
-    // throw new AppError('Not allowed', 401)
-    res.render('products/new', { categories })
-})
+// app.get('/products/new', (req, res) => {
+//     res.render('products/new', { categories })
+// })
 
-app.post('/products',  wrapAsync(async (req, res, next ) => {
-    const newProduct = new Product(req.body);
-    await newProduct.save();
-    if (!newProduct) {
-        return next(new AppError('Product not found', 404));
-    }
-    res.redirect(`/products/${newProduct._id}`)
-}))
+// app.post('/products',  wrapAsync(async (req, res, next ) => {
+//     const newProduct = new Product(req.body);
+//     await newProduct.save();
+//     res.redirect(`/products/${newProduct._id}`)
+// }))
 
 
 app.get('/products/:id', wrapAsync(async(req, res, next) => {
     const { id } = req.params;
-    const product = await Product.findById(id);
-    if (!product) {
-        return next(new AppError('Product not found', 404));
-    }
+    const product = await Product.findById(id).populate('farm', 'name');
     res.render('products/details', { product });
 }))
 
@@ -142,5 +153,5 @@ app.use((err, req, res, next) => {
 })
 
 app.listen(3000, ()=> {
-    console.log('Server running on Port 3001')
+    console.log('Server running on Port 3000')
 })
