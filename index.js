@@ -6,8 +6,9 @@ const methodOverride = require('method-override')
 const AppError = require('./AppError');
 
 const Product = require('./models/product');
+const Farm = require('./models/farm'); 
 
-mongoose.connect('mongodb://localhost:27017/farmStand', { useNewUrlParser: true, useUnifiedTopology:true})
+mongoose.connect('mongodb://localhost:27017/farmStandTake2', { useNewUrlParser: true, useUnifiedTopology:true})
 .then(() => {
     console.log('Mongo connection open.')
 })
@@ -20,6 +21,35 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
+
+
+// FARM ROUTES
+
+app.get('/farms', async (req, res)=> {
+    const farms = await Farm.find({});
+    res.render('farms/index', { farms });
+})
+
+app.get('/farms/new', (req, res) => {
+    res.render('farms/new')
+})
+
+app.get('/farms/:id', async (req, res) => {
+    const farm = await Farm.findById(req.params.id);
+    res.render('farms/show', { farm });
+})
+
+app.post('/farms', async (req, res) => {
+    const farm = new Farm(req.body);
+    await farm.save();
+    res.redirect('/farms');
+})
+
+
+
+
+
+// PRODUCT ROUTES
 
 
 const categories = ['fruit', 'vegetables', 'dairy'];
@@ -111,6 +141,6 @@ app.use((err, req, res, next) => {
     res.status(status).send(message);
 })
 
-app.listen(3001, ()=> {
+app.listen(3000, ()=> {
     console.log('Server running on Port 3001')
 })
